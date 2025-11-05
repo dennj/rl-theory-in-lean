@@ -2,7 +2,7 @@
 
 ## Installation
 
-It is recommended to use this project with the Lean 4 extension of VSCode. After cloning this project to a local folder and opening the folder inside VSCode, open `RLTheory.lean` and select `Restart File`.
+It is recommended to use this project with the Lean 4 extension of VSCode. After cloning this project to a local folder and opening the folder inside VSCode, open `RLTheory.lean` and select `Restart Server` and `Restart File` in the Lean 4 extension. The project should then compile. See [https://lean-lang.org/install/](https://lean-lang.org/install/) for a detailed tutorial on setting up Lean.
 
 ## Main Results 
 
