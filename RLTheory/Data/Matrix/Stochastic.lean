@@ -1,6 +1,6 @@
 /-
 SPDX-License-Identifier: MIT
-SPDX-FileCopyrightText: 2025 Shangtong Zhang shangtong.zhang.cs@gmail.com
+SPDX-FileCopyrightText: 2025 Shangtong Zhang <shangtong.zhang.cs@gmail.com>
 -/
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.Order.Interval.Finset.Defs
