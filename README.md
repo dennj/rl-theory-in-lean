@@ -1,8 +1,19 @@
-# Formalizing RL Theory
+# RL Theory in Lean
 
 ## Installation
 
 It is recommended to use this project with the Lean 4 extension of VSCode. After cloning this project to a local folder and opening the folder inside VSCode, open `RLTheory.lean` and select `Restart Server` and `Restart File` in the Lean 4 extension. The project should then compile. See [https://lean-lang.org/install/](https://lean-lang.org/install/) for a detailed tutorial on setting up Lean.
+
+## Paper
+[Towards Formalizing Reinforcement Learning Theory](https://arxiv.org/abs/2511.03618)  
+```bibtex
+@article{zhang2025formalizing,
+    title={Towards Formalizing Reinforcement Learning Theory},
+    author={Shangtong Zhang},
+    year={2025},
+    journal={arXiv preprint arXiv:2511.03618}
+}
+```
 
 ## Main Results 
 
@@ -64,4 +75,3 @@ It is recommended to use this project with the Lean 4 extension of VSCode. After
   - [MarkovRewardProcess.lean](RLTheory/MarkovDecisionProcess/MarkovRewardProcess.lean) — basics of finite MRPs.
     - **`[NegDefAsymm MRP.K]`** — negative definiteness of the matrix $D(\gamma P - I)$ 
   - [MarkovDecisionProcess.lean](RLTheory/MarkovDecisionProcess/MarkovDecisionProcess.lean) — basics of finite MDPs.
-
