@@ -17,10 +17,9 @@ open Finset
 lemma cons_eq_union
   (s : Finset ℕ) (e : ℕ) (h : e ∉ s) :
   (cons e s h) = s ∪ {e} := by
-    simp; ext i; simp;
-    refine Iff.intro ?mp ?mpr
-    · intro h; exact Or.symm h
-    · intro h; exact Or.symm h
+    ext i
+    simp only [Finset.mem_cons, Finset.mem_union, Finset.mem_singleton]
+    exact Iff.intro Or.symm Or.symm
 
 namespace Nat
 
@@ -92,18 +91,19 @@ lemma mul_mem [ClosedUnderAdd A] {x : ℕ} (hx : x ∈ A) :
     ∀ n : ℕ, 0 < n → n * x ∈ A := by
   have hA := (inferInstance : ClosedUnderAdd A).closed_under_add
   intro n hn
-  induction' n using Nat.strongRec with n ih
-  cases n with
-  | zero =>
-      cases hn
-  | succ n =>
-      have : n = 0 ∨ 0 < n := Nat.eq_zero_or_pos n
-      have hstep : (n + 1) * x = n * x + x := by ring
-      cases this with
-      | inl h0 => rw [h0]; simp [hx]
-      | inr hnpos =>
-          have hx' : n * x ∈ A := ih n (Nat.lt_succ_self n) hnpos
-          simp [hstep, hA hx' hx]
+  induction n using Nat.strongRec with
+  | ind n ih =>
+    cases n with
+    | zero =>
+        cases hn
+    | succ n =>
+        have : n = 0 ∨ 0 < n := Nat.eq_zero_or_pos n
+        have hstep : (n + 1) * x = n * x + x := by ring
+        cases this with
+        | inl h0 => rw [h0]; simp [hx]
+        | inr hnpos =>
+            have hx' : n * x ∈ A := ih n (Nat.lt_succ_self n) hnpos
+            simp [hstep, hA hx' hx]
 
 lemma lincomb_mem
   [ClosedUnderAdd A] (s : Finset ℕ) (hs : s.Nonempty) (f : ℕ → ℕ):
@@ -131,7 +131,7 @@ lemma lincomb_mem
         exact hnew i this
       exact hbase this
     · have : @Membership.mem ℕ (Finset ℕ) instMembership {a} a := by simp
-      have : a ∈ s ∪ {a} := by simp [this]
+      have : a ∈ s ∪ {a} := by simp
       obtain ⟨ha, hf⟩ := hnew a this
       rw [mul_comm]
       exact mul_mem ha (f a) hf
@@ -161,10 +161,9 @@ lemma Int.toNat_sum (s : Finset ℕ) (hs : s.Nonempty) (f : ℕ → ℤ) :
       rw [sum_union hsa']
       simp
       apply Int.toNat_add h₁ h₂
-    simp [hbase hfi]
-    conv_rhs =>
-      rw [sum_union hsa']
-    rfl
+    rw [hbase hfi]
+    rw [sum_union hsa']
+    simp
 
 class FiniteGCDOne (A : Set ℕ) : Prop where
   finite_gcd_one : ∃ s : Finset ℕ,
@@ -211,7 +210,7 @@ theorem all_but_finite_of_closed_under_add_and_gcd_one
       intro n hn
       have : n = n / m * m + n % m * (1 : ℕ) := by
         simp
-        linarith [Int.emod_add_ediv n m]
+        linarith [Int.emod_add_mul_ediv n m]
       set k := n / m
       set r := n % m
       conv_rhs at this =>
@@ -232,11 +231,13 @@ theorem all_but_finite_of_closed_under_add_and_gcd_one
         unfold c'
         have : -r * c i ≤ m * c_bound := by calc
             -r * c i
-          _ ≤ |r * c i| := by simp [neg_le_abs]
+          _ = -(r * c i) := by ring
+          _ ≤ |(r * c i)| := neg_le_abs (r * c i)
           _ = |r| * |c i| := by simp [abs_mul]
           _ ≤ |r| * c_bound := by
             have := hcmax i hi
             gcongr
+            apply abs_nonneg
           _ ≤ r * c_bound := by
             have : 0 ≤ r := by
               have := Int.emod_nonneg n hmpos.ne'
