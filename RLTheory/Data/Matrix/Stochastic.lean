@@ -23,7 +23,7 @@ import Mathlib.Topology.Sequences
 import Mathlib.Analysis.Normed.Lp.WithLp
 import Mathlib.Analysis.Normed.Lp.PiLp
 
-import RLTheory.Data.Int.GCD
+import Mathlib.NumberTheory.FrobeniusNumber
 import RLTheory.Data.Matrix.Mul
 
 open Finset NNReal WithLp Matrix PiLp Nat ContractingWith Metric Bornology Filter Function
@@ -230,83 +230,62 @@ variable [DecidableEq S]
 class Irreducible (P : Matrix S S ℝ) [RowStochastic P] where
   irreducible : ∀ i j, ∃ n : ℕ, 0 < (P ^ n) i j
 
+/-- The set of positive return times for state i -/
 noncomputable def return_times (P : Matrix S S ℝ) [RowStochastic P] (i : S)
-  : Set ℕ :=  {n : ℕ | 1 ≤ n ∧ 0 < (P ^ n) i i}
+  : Set ℕ := {n : ℕ | 1 ≤ n ∧ 0 < (P ^ n) i i}
 
-instance (P : Matrix S S ℝ) [RowStochastic P] (i : S)
-  : ClosedUnderAdd (return_times P i) := by
-  constructor
-  intro a b ha hb
+/-- Return times are closed under addition (used via AddSubmonoid.closure) -/
+lemma return_times_add_mem (P : Matrix S S ℝ) [RowStochastic P] (i : S)
+    {a b : ℕ} (ha : a ∈ return_times P i) (hb : b ∈ return_times P i) :
+    a + b ∈ return_times P i := by
   simp only [return_times, Set.mem_setOf_eq] at ha hb ⊢
   obtain ⟨ha1, ha2⟩ := ha
   obtain ⟨hb1, hb2⟩ := hb
   constructor
   · linarith
   · calc
-      0 < (P ^ a) i i * (P ^ b) i i := by
-        exact mul_pos ha2 hb2
-    _ ≤ (P ^ (a + b)) i i := by
-      exact (chapman_kolmogorov_eq_ge P a b i i i).le
+      0 < (P ^ a) i i * (P ^ b) i i := mul_pos ha2 hb2
+    _ ≤ (P ^ (a + b)) i i := (chapman_kolmogorov_eq_ge P a b i i i).le
 
+/-- A stochastic matrix is aperiodic if for each state, the GCD of return times is 1 -/
 class Aperiodic (P : Matrix S S ℝ) [RowStochastic P] where
-  aperiodic : ∀ i, FiniteGCDOne (return_times P i)
-
-instance (P : Matrix S S ℝ) [RowStochastic P] [Aperiodic P] (i : S)
-  : FiniteGCDOne (return_times P i) := by
-  exact (inferInstance : Aperiodic P).aperiodic i
+  aperiodic : ∀ i, Nat.setGcd (return_times P i) = 1
 
 theorem eventually_positive [Nonempty S] (P : Matrix S S ℝ) [RowStochastic P]
   [Irreducible P] [Aperiodic P] :
   ∃ N, ∀ n i j, N ≤ n → 0 < (P ^ n) i j := by
-  let h_exists_ni := fun i =>
-    (Nat.all_but_finite_of_closed_under_add_and_gcd_one
-      (A := (return_times P i)))
-  let ni := fun i => (h_exists_ni i).choose
-  have : ∃ N, ∀ n i, N ≤ n → 0 < (P ^ n) i i := by
-    have : (Finset.univ (α := S)).Nonempty := by simp
-    refine ⟨?N, ?hN⟩
-    case N => exact sup' (Finset.univ (α := S)) this ni
-    case hN =>
-      intro n i hnge
-      have hni : ni i ≤ n := by
-        have : i ∈ Finset.univ (α := S) := by simp
-        have := le_sup' ni this
-        linarith
-      have := (h_exists_ni i).choose_spec n hni
-      simp [return_times] at this
-      exact this.2
-  obtain ⟨n₀, hn₀⟩ := this
-  let h_exists_nij := fun ij : S × S =>
-    (inferInstance : Irreducible P).irreducible ij.1 ij.2
-  let nij := fun ij => (h_exists_nij ij).choose
-  have : (Finset.univ (α := S × S)).Nonempty := by simp
-  let n₁ := sup' (Finset.univ (α := S × S)) this nij
-  refine ⟨?N, ?hN⟩
-  case N => exact n₀ + n₁
-  case hN =>
-    intro n i j hnge
-    let ij := nij (i, j)
-    have : ij ≤ n₁ := by
-      have : (i, j) ∈ Finset.univ (α := S × S) := by simp
-      have := le_sup' nij this
-      linarith
-    have hnijn : ij ≤ n := by linarith
-    have hn : n₀ ≤ n - ij := by
-      rw [Nat.le_sub_iff_add_le hnijn]
-      linarith
-    have hPnij : 0 < (P ^ (ij)) i j := by
-      simp [ij]; exact (h_exists_nij (i, j)).choose_spec
-    have hPn₀ : 0 < (P ^ (n - ij)) j j := hn₀ (n - ij) j hn
-    calc
-      0
-    _ < (P ^ (ij)) i j * (P ^ (n - ij)) j j := by
-      exact mul_pos hPnij hPn₀
+  have h_ni : ∀ i, ∃ n₀, ∀ n, n₀ ≤ n → n ∈ return_times P i ∨ n = 0 := fun i => by
+    have hcl : ∀ x, x ∈ AddSubmonoid.closure (return_times P i) → x ∈ return_times P i ∨ x = 0 := by
+      intro x hx; induction hx using AddSubmonoid.closure_induction with
+      | mem _ hy => exact Or.inl hy
+      | zero => exact Or.inr rfl
+      | add _ _ _ _ iha ihb =>
+        rcases iha with ha | ha0 <;> rcases ihb with hb | hb0
+        · exact Or.inl (return_times_add_mem P i ha hb)
+        all_goals simp_all
+    obtain ⟨n₀, hn₀⟩ := Nat.exists_mem_closure_of_ge (return_times P i)
+    refine ⟨n₀, fun n hn => ?_⟩
+    rcases eq_or_ne n 0 with rfl | hn0; · exact Or.inr rfl
+    rcases hcl n (hn₀ n hn (by simp [Aperiodic.aperiodic (P := P) i])) with h | h
+    · exact Or.inl h
+    · exact (hn0 h).elim
+  let ni := fun i => (h_ni i).choose
+  let n₀ := sup' _ univ_nonempty ni + 1
+  have hn₀ : ∀ n i, n₀ ≤ n → 0 < (P ^ n) i i := fun n i hn => by
+    have hni : ni i ≤ n := by have := le_sup' ni (mem_univ i); omega
+    rcases (h_ni i).choose_spec n hni with h | h
+    · exact h.2
+    · omega
+  let nij := fun ij : S × S => (Irreducible.irreducible (P := P) ij.1 ij.2).choose
+  let n₁ := sup' _ (by simp : (univ (α := S × S)).Nonempty) nij
+  refine ⟨n₀ + n₁, fun n i j hn => ?_⟩
+  have hnij_le : nij (i, j) ≤ n₁ := le_sup' nij (mem_univ (i, j))
+  have hle : nij (i, j) ≤ n := by omega
+  calc 0 < (P ^ nij (i,j)) i j * (P ^ (n - nij (i,j))) j j :=
+        mul_pos (Irreducible.irreducible (P := P) i j).choose_spec (hn₀ _ j (by omega))
     _ ≤ (P ^ n) i j := by
-      have hineq := chapman_kolmogorov_eq_ge P (ij) (n - ij) i j j
-      have : ij + (n - ij) = n := by
-        rw [add_comm, Nat.sub_add_cancel hnijn]
-      rw [this] at hineq
-      exact hineq.le
+      have := chapman_kolmogorov_eq_ge P (nij (i,j)) (n - nij (i,j)) i j j
+      simp only [Nat.add_sub_cancel' hle] at this; exact this
 
 class DoeblinMinorization (P : Matrix S S ℝ) [RowStochastic P] where
   minorize : ∃ (ε : ℝ) (ν : S → ℝ),
